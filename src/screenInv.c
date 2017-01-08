@@ -496,34 +496,60 @@ static void cleanup() {
 }
 
 static void swCopyRegion(struct mxcfb_rect *region) {
-    int pixelPerLine = finfo.line_length / 2;
+    int pixelPerLine = finfo.line_length / (vinfo.bits_per_pixel / 8);
     int deltaToNextLine = pixelPerLine - region->width;
     int addr = region->top * pixelPerLine + region->left;
     int xStart = region->width;
 
-    for (int yCnt = region->height; yCnt != 0; yCnt--) {
-        for (int xCnt = xStart; xCnt != 0; xCnt--) {
-            fbMemory[addr] = virtualFB[addr];
-            addr++;
-        }
+    if (vinfo.bits_per_pixel == 16) {
+        for (int yCnt = region->height; yCnt != 0; yCnt--) {
+            for (int xCnt = xStart; xCnt != 0; xCnt--) {
+                fbMemory[addr] = virtualFB[addr];
+                addr++;
+            }
 
-        addr += deltaToNextLine;
+            addr += deltaToNextLine;
+        }
+    } else if (vinfo.bits_per_pixel == 32) {
+        uint32_t *f = (uint32_t *) fbMemory;
+        uint32_t *v = (uint32_t *) virtualFB;
+        for (int yCnt = region->height; yCnt != 0; yCnt--) {
+            for (int xCnt = xStart; xCnt != 0; xCnt--) {
+                f[addr] = v[addr];
+                addr++;
+            }
+
+            addr += deltaToNextLine;
+        }
     }
 }
 
 static void swInvertCopy(struct mxcfb_rect *region) {
-    int pixelPerLine = finfo.line_length / 2;
+    int pixelPerLine = finfo.line_length / (vinfo.bits_per_pixel / 8);
     int deltaToNextLine = pixelPerLine - region->width;
     int addr = region->top * pixelPerLine + region->left;
     int xStart = region->width;
 
-    for (int yCnt = region->height; yCnt != 0; yCnt--) {
-        for (int xCnt = xStart; xCnt != 0; xCnt--) {
-            fbMemory[addr] = 0xffff - virtualFB[addr];
-            addr++;
-        }
+    if (vinfo.bits_per_pixel == 16) {
+        for (int yCnt = region->height; yCnt != 0; yCnt--) {
+            for (int xCnt = xStart; xCnt != 0; xCnt--) {
+                fbMemory[addr] = 0xffff - virtualFB[addr];
+                addr++;
+            }
 
-        addr += deltaToNextLine;
+            addr += deltaToNextLine;
+        }
+    } else if (vinfo.bits_per_pixel == 32) {
+        uint32_t *f = (uint32_t *) fbMemory;
+        uint32_t *v = (uint32_t *) virtualFB;
+        for (int yCnt = region->height; yCnt != 0; yCnt--) {
+            for (int xCnt = xStart; xCnt != 0; xCnt--) {
+                f[addr] = 0x00ffffff - v[addr];
+                addr++;
+            }
+
+            addr += deltaToNextLine;
+        }
     }
 }
 /*
