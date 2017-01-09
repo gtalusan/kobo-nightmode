@@ -64,7 +64,7 @@ static uint16_t *virtualFB = NULL;
 static time_t configLastChange = 0;
 
 static dictionary* configIni = NULL;
-static bool useHWInvert = false;
+static bool useHWInvert = true;
 static bool inversionActive = false;
 static bool retainState = false;
 static int longPressTimeout = 800;
@@ -389,11 +389,6 @@ static void initialize() {
         codename[lastChar] = 0;
 
     DEBUGPRINT("%s", codename);
-    if (!strcmp("pixie", codename) || !strcmp("trilogy", codename) || !strcmp("kraken", codename) || !strcmp("dragon", codename)) {
-        useHWInvert = true;
-        DEBUGPRINT("ScreenInverter: Device supports HW invert!");
-    } else
-        DEBUGPRINT("ScreenInverter: No HW inversion support, falling back to SW.");
 
     pclose(devReader);
 
