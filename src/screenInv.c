@@ -21,7 +21,7 @@
 
 #include <linux/types.h>
 #include <linux/fb.h>
-#include <linux/mxcfb.h>
+#include "mxcfb.h"
 #include <linux/rtc.h>
 
 //alternative headers without function definition
@@ -32,6 +32,8 @@
 #include "screenInv.h"
 
 #define EVIOCGRAB		_IOW('E', 0x90, int)
+
+#define RTC_WAKEUP_FLAG _IOR('p', 0x13, unsigned long)
 
 //interposed funcs
 int ioctl(int filp, unsigned long cmd, unsigned long arg);
@@ -56,6 +58,7 @@ static void cleanup() __attribute__ ( ( destructor ) );
 
 static pthread_t cmdReaderThread = 0, buttonReaderThread;
 static struct mxcfb_update_data fullUpdRegion, workaroundRegion;
+static struct mxcfb_update_data_v2 fullUpdRegion_v2, workaroundRegion_v2;
 static int fb0fd = 0;
 static struct fb_var_screeninfo vinfo;
 static struct fb_fix_screeninfo finfo;
@@ -65,6 +68,7 @@ static time_t configLastChange = 0;
 
 static dictionary* configIni = NULL;
 static bool useHWInvert = true;
+static bool useV2API = false;
 static bool inversionActive = false;
 static bool retainState = false;
 static int longPressTimeout = 800;
@@ -90,12 +94,22 @@ static time_t last_rtc_time;
 static void forceUpdate() {
     int ret = -1;
 
-    if (useHWInvert) {
-        fullUpdRegion.flags = inversionActive ? EPDC_FLAG_ENABLE_INVERSION : 0;
-        ret = ioctl_orig(fb0fd, MXCFB_SEND_UPDATE, (unsigned long int) &fullUpdRegion);
+    if (!useV2API) {
+        if (useHWInvert) {
+            fullUpdRegion.flags = inversionActive ? EPDC_FLAG_ENABLE_INVERSION : 0;
+            ret = ioctl_orig(fb0fd, MXCFB_SEND_UPDATE, (unsigned long int) &fullUpdRegion);
+        } else {
+            fullUpdRegion.flags = 0;
+            ret = ioctl(fb0fd, MXCFB_SEND_UPDATE, (unsigned long int) &fullUpdRegion);
+        }
     } else {
-        fullUpdRegion.flags = 0;
-        ret = ioctl(fb0fd, MXCFB_SEND_UPDATE, (unsigned long int) &fullUpdRegion);
+        if (useHWInvert) {
+            fullUpdRegion_v2.flags = inversionActive ? EPDC_FLAG_ENABLE_INVERSION : 0;
+            ret = ioctl_orig(fb0fd, MXCFB_SEND_UPDATE_V2, (unsigned long int) &fullUpdRegion_v2);
+        } else {
+            fullUpdRegion_v2.flags = 0;
+            ret = ioctl(fb0fd, MXCFB_SEND_UPDATE_V2, (unsigned long int) &fullUpdRegion_v2);
+        }
     }
 
 #ifdef SI_DEBUG
@@ -340,8 +354,13 @@ static bool updateVarScreenInfo() {
     }
     thresholdScreenArea = ( SI_AREA_THRESHOLD * vinfo.xres * vinfo.yres) / 100;
 
-    fullUpdRegion.update_region.width = vinfo.xres;
-    fullUpdRegion.update_region.height = vinfo.yres;
+    if (!useV2API) {
+        fullUpdRegion.update_region.width = vinfo.xres;
+        fullUpdRegion.update_region.height = vinfo.yres;
+    } else {
+        fullUpdRegion_v2.update_region.width = vinfo.xres;
+        fullUpdRegion_v2.update_region.height = vinfo.yres;
+    }
 
     return true;
 }
@@ -372,6 +391,11 @@ static void initialize() {
 
     unsetenv("LD_PRELOAD");
     DEBUGPRINT("ScreenInverter: Removed LD_PRELOAD!");
+
+    char *platform = getenv("PLATFORM");
+    if (platform && (!strcmp(platform, "mx6sll-ntx") || !strcmp(platform, "mx6ull-ntx"))) {
+        useV2API = true;
+    }
 
     //read device
     FILE *devReader = NULL;
@@ -417,23 +441,47 @@ static void initialize() {
         return;
     }
 
-    fullUpdRegion.update_marker = 999;
-    fullUpdRegion.update_region.top = 0;
-    fullUpdRegion.update_region.left = 0;
-    fullUpdRegion.waveform_mode = WAVEFORM_MODE_AUTO;
-    fullUpdRegion.update_mode = UPDATE_MODE_FULL;
-    fullUpdRegion.temp = TEMP_USE_AMBIENT;
-    fullUpdRegion.flags = 0;
+    if (!useV2API) {
+        fullUpdRegion.update_marker = 999;
+        fullUpdRegion.update_region.top = 0;
+        fullUpdRegion.update_region.left = 0;
+        fullUpdRegion.waveform_mode = WAVEFORM_MODE_AUTO;
+        fullUpdRegion.update_mode = UPDATE_MODE_FULL;
+        fullUpdRegion.temp = TEMP_USE_AMBIENT;
+        fullUpdRegion.flags = 0;
 
-    workaroundRegion.update_marker = 998;
-    workaroundRegion.update_region.top = 0;
-    workaroundRegion.update_region.left = 0;
-    workaroundRegion.update_region.width = 1;
-    workaroundRegion.update_region.height = 1; //1px in the top right(!) corner
-    workaroundRegion.waveform_mode = WAVEFORM_MODE_AUTO;
-    workaroundRegion.update_mode = UPDATE_MODE_PARTIAL;
-    workaroundRegion.temp = TEMP_USE_AMBIENT;
-    workaroundRegion.flags = 0;
+        workaroundRegion.update_marker = 998;
+        workaroundRegion.update_region.top = 0;
+        workaroundRegion.update_region.left = 0;
+        workaroundRegion.update_region.width = 1;
+        workaroundRegion.update_region.height = 1; //1px in the top right(!) corner
+        workaroundRegion.waveform_mode = WAVEFORM_MODE_AUTO;
+        workaroundRegion.update_mode = UPDATE_MODE_PARTIAL;
+        workaroundRegion.temp = TEMP_USE_AMBIENT;
+        workaroundRegion.flags = 0;
+    } else {
+        fullUpdRegion_v2.update_marker = 999;
+        fullUpdRegion_v2.update_region.top = 0;
+        fullUpdRegion_v2.update_region.left = 0;
+        fullUpdRegion_v2.waveform_mode = WAVEFORM_MODE_AUTO;
+        fullUpdRegion_v2.update_mode = UPDATE_MODE_FULL;
+        fullUpdRegion_v2.temp = TEMP_USE_AMBIENT;
+        fullUpdRegion_v2.flags = 0;
+        fullUpdRegion_v2.dither_mode = EPDC_FLAG_USE_DITHERING_PASSTHROUGH;
+        fullUpdRegion_v2.quant_bit = 7;
+
+        workaroundRegion_v2.update_marker = 998;
+        workaroundRegion_v2.update_region.top = 0;
+        workaroundRegion_v2.update_region.left = 0;
+        workaroundRegion_v2.update_region.width = 1;
+        workaroundRegion_v2.update_region.height = 1; //1px in the top right(!) corner
+        workaroundRegion_v2.waveform_mode = WAVEFORM_MODE_AUTO;
+        workaroundRegion_v2.update_mode = UPDATE_MODE_PARTIAL;
+        workaroundRegion_v2.temp = TEMP_USE_AMBIENT;
+        workaroundRegion_v2.flags = 0;
+        workaroundRegion_v2.dither_mode = EPDC_FLAG_USE_DITHERING_PASSTHROUGH;
+        workaroundRegion_v2.quant_bit = 7;
+    }
 
     remove( SI_CONTROL_PIPE); //just to be sure
     mkfifo( SI_CONTROL_PIPE, 0600);
@@ -660,6 +708,53 @@ int ioctl(int filp, unsigned long cmd, unsigned long arg) {
             else
                 swCopyRegion(&region->update_region);
         }
+    } else if (cmd == MXCFB_SEND_UPDATE_V2) {
+        struct mxcfb_update_data_v2 *region = (struct mxcfb_update_data_v2 *) arg;
+
+        if (inversionActive && nightRefresh) {
+            if (region->update_region.width * region->update_region.height >= thresholdScreenArea) {
+                nightRefreshCnt++;
+                if (nightRefreshCnt >= nightRefresh) {
+                    region->update_region.top = 0;
+                    region->update_region.left = 0;
+                    region->update_region.width = fullUpdRegion_v2.update_region.width;
+                    region->update_region.height = fullUpdRegion_v2.update_region.height;
+                    region->update_mode = UPDATE_MODE_FULL;
+                    nightRefreshCnt = 0;
+                    if (debug) {
+                        DEBUGPRINT("ScreenInverter: nightRefresh: refreshing screen");
+                    }
+                } else {
+                    region->update_mode = UPDATE_MODE_PARTIAL;
+                    if (debug) {
+                        DEBUGPRINT("ScreenInverter: nightRefresh: no refresh, page %d", nightRefreshCnt);
+                    }
+                }
+            } else {
+                if (debug) {
+                    DEBUGPRINT("ScreenInverter: nightRefresh: small update, ignoring");
+                }
+            }
+        }
+
+        if (useHWInvert) {
+            if (inversionActive) {
+                ioctl_orig(filp, MXCFB_SEND_UPDATE_V2, (long unsigned) &workaroundRegion_v2);
+                //necessary because there's a bug in the driver (or i'm doing it wrong):
+                //  i presume the device goes into some powersaving mode when usb und wifi are not used (great for debugging ^^)
+                //  it takes about 10sec after the last touch to enter this mode. after that it is necessary to issue a screenupdate
+                //  without inversion flag, otherwise it will ignore the inversion flag and draw normally (positive).
+                //  so i just update a 1px region in the top-right corner, this costs no time and the pixel should be behind the bezel anyway.
+
+                region->flags ^= EPDC_FLAG_ENABLE_INVERSION;
+            }
+        } else {
+            if (inversionActive)
+                swInvertCopy(&region->update_region);
+            else
+                swCopyRegion(&region->update_region);
+        }
+
     } else if (cmd == FBIOPUT_VSCREENINFO) {
         if (debug) {
             DEBUGPRINT("ScreenInverter: Screen dimensions changed, updating...");
