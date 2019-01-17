@@ -51,7 +51,7 @@ invertActive = no             # yes / no
 retainStateOverRestart = yes  # yes / no
 [control]
 longPressDurationMS = 800     		# time in milliseconds to toggle (1000 = 1 second)
-lightButtonAction = toggleNighMode	# actions associated to long press of light button:
+lightButtonAction = toggleNightMode	# actions associated to long press of light button:
 					# - toggleNightMode : toggle the nightmode (default)
 					# - launchCommand : launch the command specified by variable "launchButtonCommand"
 					# - both : toggle nightmode and launch the command
