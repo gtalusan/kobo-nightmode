@@ -34,7 +34,7 @@ relies on external tools such as:
 + [Kobo Tweaks](http://www.mobileread.com/forums/showthread.php?t=206180), maintained by ah- (currently not available for 2.6+)
 
 As there is no power button on Glo HD need to adjust setting as described [here] (http://www.mobileread.com/forums/showpost.php?p=3155975&postcount=512) so that
-a particular brightness level toggles on the night mode
+a particular brightness level toggles on the night . By default 11% toggles night mode, 12% enables night mode and 13% disables night mode.
 
 Configuration
 -------------
