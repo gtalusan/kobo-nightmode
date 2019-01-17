@@ -8,11 +8,13 @@ A tiny hack to read white-on-black on Kobo ebook readers. Works only on the eInk
 + [Kobo Glo](http://kobo.com/koboglo)
 + [Kobo Touch](http://kobo.com/kobotouch)
 + [Kobo Mini](http://kobo.com/kobomini)
++ [Kobo Clara HD](https://uk.kobobooks.com/products/kobo-clara-hd)
 
-Still working on 3.17 firmware
+
+Still working on 4.10 firmware
 
 Since the update to firmware 2.6+ Kobo has moved to hardware float proccessing, 
-requiring a new toolchain and partly breaking binary compatibility with older software. Currently this hack still works on  firmwares below 2.6, but it is highly recommended to upgrade.
+requiring a new toolchain and partly breaking binary compatibility with older software. Currently this hack still works on firmwares above 2.6.
 If you need help or find a bug, check the [mobileread thread](http://www.mobileread.com/forums/showthread.php?t=212162), or create an issue on github.
 
 Usage
@@ -23,7 +25,11 @@ There are three ways to contol nightmode:
   + Send `y` to set nightmode to ON
   + Send `n` to set nightmode to OFF
   + Send `t` to toggle
-+ define action 'toggleNightMode' on a (configurable) level of brightness and set and maintain that brightness level through Kobo UI for a (configurable) number of seconds
++ Define action 'toggleNightMode' on a (configurable) level of brightness with a (configurable) timeout before the action is taken. By default it is set to:
+  + 11% to toggle
+  + 12% set nightmode to ON
+  + 13% set nightmode to OFF
+  + 7 second timeout on brightness level before action is applied
 
 A sample script to toggle is provided in `extra/nightmode.sh`.
 As the Kobo Mini has no physical buttons, the fifo-interface is currently the only way to control nightmode when running and thus, 
@@ -32,7 +38,7 @@ relies on external tools such as:
 + [Kobo Tweaks](http://www.mobileread.com/forums/showthread.php?t=206180), maintained by ah- (currently not available for 2.6+)
 
 As there is no power button on Glo HD need to adjust setting as described [here] (http://www.mobileread.com/forums/showpost.php?p=3155975&postcount=512) so that
-a particular brightness level toggles on the night mode
+a particular brightness level toggles on the night mode.
 
 Configuration
 -------------
@@ -45,7 +51,7 @@ invertActive = no             # yes / no
 retainStateOverRestart = yes  # yes / no
 [control]
 longPressDurationMS = 800     		# time in milliseconds to toggle (1000 = 1 second)
-lightButtonAction = toggleNighMode	# actions associated to long press of light button:
+lightButtonAction = toggleNightMode	# actions associated to long press of light button:
 					# - toggleNightMode : toggle the nightmode (default)
 					# - launchCommand : launch the command specified by variable "launchButtonCommand"
 					# - both : toggle nightmode and launch the command
