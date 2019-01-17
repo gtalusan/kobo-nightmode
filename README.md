@@ -25,7 +25,11 @@ There are three ways to contol nightmode:
   + Send `y` to set nightmode to ON
   + Send `n` to set nightmode to OFF
   + Send `t` to toggle
-+ define action 'toggleNightMode' on a (configurable) level of brightness and set and maintain that brightness level through Kobo UI for a (configurable) number of seconds
++ Define action 'toggleNightMode' on a (configurable) level of brightness with a (configurable) timeout before the action is taken. By default it is set to:
+  + 11% to toggle
+  + 12% set nightmode to ON
+  + 13% set nightmode to OFF
+  + 7 second timeout on brightness level before action is applied
 
 A sample script to toggle is provided in `extra/nightmode.sh`.
 As the Kobo Mini has no physical buttons, the fifo-interface is currently the only way to control nightmode when running and thus, 
@@ -34,7 +38,7 @@ relies on external tools such as:
 + [Kobo Tweaks](http://www.mobileread.com/forums/showthread.php?t=206180), maintained by ah- (currently not available for 2.6+)
 
 As there is no power button on Glo HD need to adjust setting as described [here] (http://www.mobileread.com/forums/showpost.php?p=3155975&postcount=512) so that
-a particular brightness level toggles on the night . By default 11% toggles night mode, 12% enables night mode and 13% disables night mode.
+a particular brightness level toggles on the night mode.
 
 Configuration
 -------------
