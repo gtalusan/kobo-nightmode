@@ -392,7 +392,17 @@ static void initialize() {
     unsetenv("LD_PRELOAD");
     DEBUGPRINT("ScreenInverter: Removed LD_PRELOAD!");
 
+    struct stat buf;
+    if (stat("/sys/devices/platform/soc/2000000.aips-bus/20f4000.epdc/graphics/fb0/waveform_mode_gck16", &buf) == 0) {
+        DEBUGPRINT("supports eclipse, let nickel do the work");
+        return;
+    }
+
     char *platform = getenv("PLATFORM");
+    if (platform && (!strcmp(platform, "b300-ntx"))) {
+        DEBUGPRINT("platform not supported");
+        return;
+    }
     if (platform && (!strcmp(platform, "mx6sll-ntx") || !strcmp(platform, "mx6ull-ntx"))) {
         useV2API = true;
     }
